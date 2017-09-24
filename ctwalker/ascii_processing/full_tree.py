@@ -8,7 +8,7 @@ from ..utils import _compression_safe_opener
 from ..utils.np_memmap_utils import memmap_structured_array
 
 
-__all__ = ('full_tree_row_generator', )
+__all__ = ('write_full_tree_memmaps', )
 
 
 def write_full_tree_memmaps(hlist_fname_sequence, output_root_dirname,
