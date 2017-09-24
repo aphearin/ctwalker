@@ -1,25 +1,10 @@
 """
 """
 import numpy as np
-import gzip
 
+from ..utils import _compression_safe_opener
 
 __all__ = ('full_tree_generator', )
-
-
-def _compression_safe_opener(fname):
-    """ Determine whether to use *open* or *gzip.open* to read
-    the input file, depending on whether or not the file is compressed.
-    """
-    f = gzip.open(fname, 'r')
-    try:
-        f.read(1)
-        opener = gzip.open
-    except IOError:
-        opener = open
-    finally:
-        f.close()
-    return opener
 
 
 def full_tree_generator(ascii_tree_fname, *colnums_to_yield):
