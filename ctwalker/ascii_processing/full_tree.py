@@ -11,30 +11,29 @@ from ..utils.np_memmap_utils import memmap_structured_array
 __all__ = ('write_full_tree_memmaps', )
 
 
-def write_full_tree_memmaps(hlist_fname_sequence, output_root_dirname,
-        desired_columns_dtype, write_indexing_arrays_to_disk, *colnums_to_yield, **kwargs):
+def write_full_tree_memmaps(tree_fname_sequence, output_root_dirname,
+        desired_columns_dtype, *colnums_to_yield, **kwargs):
     """
     """
-    write_indexing_arrays_to_disk = kwargs.get('write_indexing_arrays_to_disk', False)
+    write_indexing_arrays_to_disk = kwargs.get('write_indexing_arrays_to_disk', True)
 
     # Before beginning the data reduction, verify that we can parse each fname
-    hlist_fname_sequence = list(hlist_fname_sequence)
-    __ = list(get_subvolID_from_fname(fname) for fname in hlist_fname_sequence)
+    tree_fname_sequence = list(tree_fname_sequence)
+    __ = list(get_subvolID_from_fname(fname) for fname in tree_fname_sequence)
 
     # Verify consistency of the input desired_columns_dtype with other arguments
     msg = ("Input ``desired_columns_dtype`` must have same length as ``colnums_to_yield``")
     assert len(desired_columns_dtype) == len(colnums_to_yield), msg
 
-    for hlist_fname in hlist_fname_sequence:
-        subvolID = get_subvolID_from_fname(hlist_fname)
+    for tree_fname in tree_fname_sequence:
+        subvolID = get_subvolID_from_fname(tree_fname)
         subvol_string = '_'.join(str(i) for i in subvolID)
         subvol_dirname = os.path.join(output_root_dirname, 'subvol_' + subvol_string)
 
         data_gen_kwargs = {}
         data_gen_kwargs['write_indexing_arrays_to_disk'] = write_indexing_arrays_to_disk
         data_gen_kwargs['dirname_for_indexing_arrays'] = subvol_dirname
-        result = list(full_tree_row_generator(
-            hlist_fname, *colnums_to_yield, **data_gen_kwargs))
+        result = list(full_tree_row_generator(tree_fname, *colnums_to_yield))
 
         tree_root_indices = result.pop()
         tree_root_ids = result.pop()
