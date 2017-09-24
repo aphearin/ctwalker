@@ -1,13 +1,59 @@
 """
 """
 import numpy as np
+import os
 
+from .hlist_ascii_utils import get_subvolID_from_fname
 from ..utils import _compression_safe_opener
+from ..utils.np_memmap_utils import memmap_structured_array
 
-__all__ = ('full_tree_generator', )
+
+__all__ = ('full_tree_row_generator', )
 
 
-def full_tree_generator(ascii_tree_fname, *colnums_to_yield):
+def write_full_tree_memmaps(hlist_fname_sequence, output_root_dirname,
+        desired_columns_dtype, write_indexing_arrays_to_disk, *colnums_to_yield, **kwargs):
+    """
+    """
+    write_indexing_arrays_to_disk = kwargs.get('write_indexing_arrays_to_disk', False)
+
+    # Before beginning the data reduction, verify that we can parse each fname
+    hlist_fname_sequence = list(hlist_fname_sequence)
+    __ = list(get_subvolID_from_fname(fname) for fname in hlist_fname_sequence)
+
+    # Verify consistency of the input desired_columns_dtype with other arguments
+    msg = ("Input ``desired_columns_dtype`` must have same length as ``colnums_to_yield``")
+    assert len(desired_columns_dtype) == len(colnums_to_yield), msg
+
+    for hlist_fname in hlist_fname_sequence:
+        subvolID = get_subvolID_from_fname(hlist_fname)
+        subvol_string = '_'.join(str(i) for i in subvolID)
+        subvol_dirname = os.path.join(output_root_dirname, 'subvol_' + subvol_string)
+
+        data_gen_kwargs = {}
+        data_gen_kwargs['write_indexing_arrays_to_disk'] = write_indexing_arrays_to_disk
+        data_gen_kwargs['dirname_for_indexing_arrays'] = subvol_dirname
+        result = list(full_tree_row_generator(
+            hlist_fname, *colnums_to_yield, **data_gen_kwargs))
+
+        tree_root_indices = result.pop()
+        tree_root_ids = result.pop()
+        if write_indexing_arrays_to_disk:
+            #  Convert tree_root_indices to structured array and memmap
+            dt_tree_root_indices = np.dtype([('tree_root_indices', 'i8')])
+            tree_root_indices = tree_root_indices.astype(dt_tree_root_indices)
+            memmap_structured_array(tree_root_indices, subvol_dirname)
+            #  Convert tree_root_ids to structured array and memmap
+            dt_tree_root_ids = np.dtype([('tree_root_ids', 'i8')])
+            tree_root_ids = tree_root_ids.astype(dt_tree_root_ids)
+            memmap_structured_array(tree_root_ids, subvol_dirname)
+
+        #  Convert string data to structured array and memmap
+        arr = np.array(result, dtype=desired_columns_dtype)
+        memmap_structured_array(arr, subvol_dirname)
+
+
+def full_tree_row_generator(ascii_tree_fname, *colnums_to_yield):
     """ Iterate over an input ASCII Consistent Trees file yielding
     all rows of the desired columns.
 
@@ -43,7 +89,7 @@ def full_tree_generator(ascii_tree_fname, *colnums_to_yield):
     The following toy example illustrates
     how the bookkeeping works for the returned quantities.
 
-    >>> result = list(full_tree_generator(ascii_tree_fname, 0, 1, 2, 10))  # doctest: +SKIP
+    >>> result = list(full_tree_row_generator(ascii_tree_fname, 0, 1, 2, 10))  # doctest: +SKIP
     >>> tree_root_indices = result.pop()  # doctest: +SKIP
     >>> tree_root_ids = result.pop()  # doctest: +SKIP
 
